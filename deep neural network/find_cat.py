@@ -3,11 +3,30 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 
-train_x_orig, train_y, test_x_orig, test_y, classes = load_data()
 
-m_train = train_x_orig.shape[0] # 训练样本的数量
-m_test = test_x_orig.shape[0] # 测试样本的数量
-num_px = test_x_orig.shape[1] # 每张图片的宽/高
+def load_dataset():
+    train_dataset = h5py.File('datasets/train_catvnoncat.h5', 'r')  # 加载训练数据集
+    train_set_x_orig = np.array(train_dataset["train_set_x"][:])  # 从训练数据中提取图片的特征数据
+    train_set_y_orig = np.array(train_dataset["train_set_y"][:])  # 从训练数据中提取出图片的标签数据
+
+    test_dataset = h5py.File('datasets/test_catvnoncat.h5', 'r')  # 加载测试数据集
+    test_set_x_orig = np.array(test_dataset["test_set_x"][:])
+    test_set_y_orig = np.array(test_dataset["test_set_y"][:])
+
+    classes = np.array(test_dataset["list_classes"][:])  # 加载标签类别数据，这里的类别只有两种，1代表有猫，0代表无猫
+
+    train_set_y_orig = train_set_y_orig.reshape((1, train_set_y_orig.shape[0]))  # 把数组的维度从(209,)变成(1, 209)，这样
+    # 好方便后面进行计算
+    test_set_y_orig = test_set_y_orig.reshape((1, test_set_y_orig.shape[0]))  # 从(50,)变成(1, 50)
+
+    return train_set_x_orig, train_set_y_orig, test_set_x_orig, test_set_y_orig, classes
+
+
+train_x_orig, train_y, test_x_orig, test_y, classes = load_dataset()
+
+m_train = train_x_orig.shape[0]  # 训练样本的数量
+m_test = test_x_orig.shape[0]  # 测试样本的数量
+num_px = test_x_orig.shape[1]  # 每张图片的宽/高
 
 # 为了方便后面进行矩阵运算，我们需要将样本数据进行扁平化和转置
 # 处理后的数组各维度的含义是（图片数据，样本数）
@@ -15,8 +34,9 @@ train_x_flatten = train_x_orig.reshape(train_x_orig.shape[0], -1).T
 test_x_flatten = test_x_orig.reshape(test_x_orig.shape[0], -1).T
 
 # 下面我们对特征数据进行了简单的标准化处理（除以255，使所有值都在[0，1]范围内）
-train_x = train_x_flatten/255.
-test_x = test_x_flatten/255.
+train_x = train_x_flatten / 255.
+test_x = test_x_flatten / 255.
+
 
 # 利用上面的工具函数构建一个深度神经网络训练模型
 def dnn_model(X, Y, layers_dims, learning_rate=0.0075, num_iterations=3000, print_cost=False):
@@ -38,19 +58,19 @@ def dnn_model(X, Y, layers_dims, learning_rate=0.0075, num_iterations=3000, prin
     parameters = initialize_parameters_deep(layers_dims)
 
     # 按照指示的次数来训练深度神经网络
-    for i in range(0,num_iterations):
-        #进行前向传播
-        AL,caches = L_model_forward(X, parameters)
-        #计算成本
-        cost = compute_cost(AL,y)
-        #进行反向传播
-        grads = L_model_backward(AL,Y,caches)
-        #更新参数，进行下一轮传播
-        parameters = update_parameters(parameters,grads,learning_rate)
+    for i in range(0, num_iterations):
+        # 进行前向传播
+        AL, caches = L_model_forward(X, parameters)
+        # 计算成本
+        cost = compute_cost(AL, Y)
+        # 进行反向传播
+        grads = L_model_backward(AL, Y, caches)
+        # 更新参数，进行下一轮传播
+        parameters = update_parameters(parameters, grads, learning_rate)
 
-        #打印成本
+        # 打印成本
         if i % 100 == 0:
-            if print_cost and i >0:
+            if print_cost and i > 0:
                 print("训练%i次后成本是: %f" % (i, cost))
             costs.append(cost)
 
@@ -62,6 +82,7 @@ def dnn_model(X, Y, layers_dims, learning_rate=0.0075, num_iterations=3000, prin
     plt.show()
 
     return parameters
+
 
 # 设置好深度神经网络的层次信息——下面代表了一个4层的神经网络（12288是输入层），
 # 第一层有20个神经元，第二层有7个神经元。。。
@@ -88,14 +109,11 @@ def predict(X, parameters):
 
     return p
 
-# 对训练数据集进行预测
-pred_train = predict(train_x,parameters)
-print("预测准确率是: "  + str(np.sum((pred_train == train_y) / train_x.shape[1])))
 
+# 对训练数据集进行预测
+pred_train = predict(train_x, parameters)
+print("预测准确率是: " + str(np.sum((pred_train == train_y) / train_x.shape[1])))
 
 # 对测试数据集进行预测
-pred_test = predict(test_x,parameters)
-print("预测准确率是: "  + str(np.sum((pred_test == test_y) / test_x.shape[1])))
-
-
-
+pred_test = predict(test_x, parameters)
+print("预测准确率是: " + str(np.sum((pred_test == test_y) / test_x.shape[1])))
